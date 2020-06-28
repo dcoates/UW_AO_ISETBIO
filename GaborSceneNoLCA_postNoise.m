@@ -3,13 +3,13 @@ close all;
 
 rng;
 
-[theOI_control,theOI]=make_optics();
+[theOI_with_lca,theOI]=make_optics();
 
 %% Create the scene
 presentationDisplay = displayCreate('AOSim-Seattle_SPDcorrected_Scaled');
 
 scene_sample = generateGaborSceneAO(presentationDisplay, 1, 1, 1, 1); % just to get the fov for mosaic generation
-sceneFov = 1.1;%sceneGet(scene_sample, 'fov');
+sceneFov = 0.2;%sceneGet(scene_sample, 'fov');
 % ok, if this value is smaller than that size of the scene, the mosaic
 % generation gets error. Here as a quick remedy artificially giving a
 % slightly higer fov.
@@ -63,10 +63,10 @@ for mos = 1:length(KLMSdensity)
             'integrationTime', 10/1000, ...             % 30 msec integration time
             'maxGridAdjustmentIterations', 50, ...
             'spatialDensity', this_KLMSdensity, ...     % terminate iterative lattice adjustment after 50 iterations
-            'noiseFlag', 'none');
+            'noiseFlag', 'none');                       % For efficiency, we add Poisson noise after-the-fact. Only works
+                                                        % for no eye movements, etc.
         save(savename_mosaic, 'theMosaic', 'this_KLMSdensity');
     end
-    
     
     % Making dir to save cone excitation instances
     conerespdir = fullfile(mosaicdir, foldername);
@@ -79,10 +79,10 @@ for mos = 1:length(KLMSdensity)
     
     for oi = 1:2
         % For oi==1, do LCA off, everything OFF
-        % For oi==2, do LCA on, normal wvf
+        % For oi==2, do LCA on, normal human wvf
         if oi == 2
-            theOI = theOI_control;
-            disp('Now using the control OI.');
+            theOI = theOI_with_lca;
+            disp('Now using the normal human WVF OI.');
         end
         
         for exp = 1:length(coltype_set) 
@@ -102,136 +102,17 @@ for mos = 1:length(KLMSdensity)
                 savename_coneresp_instances = fullfile(path, 'noisyInstances', ['noisyInstances_', fname, ext]);
                 
                 if isfile(savename_coneresp)
-                    fprintf('This cone excitation instance already exists. Skip computing... \n');
-                    [runsvm, nrunadd] = checkforsvm(savename_coneresp, nSVMrep);
-                    if runsvm
-                        if isfile(savename_coneresp_instances)
-                            stemp_instances = load(savename_coneresp_instances);
-                            coneExcitationCond1_noisyInstances = stemp_instances.coneExcitationCond1_noisyInstances;
-                            coneExcitationCond2_noisyInstances = stemp_instances.coneExcitationCond2_noisyInstances;
-                        else
-                            stemp = load(savename_coneresp);
-                            [coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances] = coneExcitationAddNoise(stemp.coneExcitationsCond1, stemp.coneExcitationsCond2);
-                            saveparfor_instances(savename_coneresp_instances, coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances);
-                        end
-                        SVMpercentCorrect = [];
-                        for rep = 1:nrunadd
-                            SVMpercentCorrect = [SVMpercentCorrect, svm_pca(theMosaic, coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances)];
-                        end
-                        saveparfor_svm(savename_coneresp, SVMpercentCorrect);
-                    end
-                    
+                    fprintf('This cone excitation instance already exists. Loading saved file... \n');
+                    load_previous_excitations(savename_coneresp,nSVMrep);
                 else
                     %% ------ LOOP FOR EACH CONDITION FROM HERE ------ %%
                     scene1 = generateGaborSceneAO(presentationDisplay, this_coltype(1), this_ort(1), this_sf, this_contrast); % inputs: (display, coltype, ort, sf, contrast)
                     scene2 = generateGaborSceneAO(presentationDisplay, this_coltype(2), this_ort(2), this_sf, this_contrast);
-%                     scene2 = generateGaborSceneAO(presentationDisplay, this_coltype(2), this_ort(2), this_sf, 0);
-                    % visualizeScene(scene, 'displayContrastProfiles', true);
-                    
-                    
-                    %% Compute and visualize the retinal images with and without LCA
-                    theOIscene1 = oiCompute(theOI, scene1);
-                    theOIscene2 = oiCompute(theOI, scene2);
-                    
-                    % % Visualize the PSFs and OTFs
-                    % % Visualize the PSF/OTF at 530 (in-focus)
-                    % visualizedSpatialSupportArcMin = 6;
-                    % visualizedSpatialSfrequencyCPD = 120;
-                    % visualizeOptics(theOIscene1, accommodatedWavelength, visualizedSpatialSupportArcMin, visualizedSpatialSfrequencyCPD);
-                    % visualizeOptics(theOIscene2, accommodatedWavelength, visualizedSpatialSupportArcMin, visualizedSpatialSfrequencyCPD);
-                    
-                    % % Visualize the optical image as an RGB image and a few spectral slices
-                    % visualizeOpticalImage(theOIscene1, 'displayRadianceMaps', false, ...
-                    %     'displayRetinalContrastProfiles', false);
-                    % visualizeOpticalImage(theOIscene2, 'displayRadianceMaps', false, ...
-                    %     'displayRetinalContrastProfiles', false);
-                    
-                    
                     %% Compute the mean cone excitation responses to the stimulus
-                    coneExcitationsCond1 = theMosaic.compute(theOIscene1);
-                    coneExcitationsCond2 = theMosaic.compute(theOIscene2);
-                    saveparfor(savename_coneresp, coneExcitationsCond1, coneExcitationsCond2); 
-                    
-                    randomSeed = rng;
-                    saveparfor_rseed(savename_coneresp, randomSeed); 
-                    
-                    [coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances] = coneExcitationAddNoise(coneExcitationsCond1, coneExcitationsCond2);
-                    saveparfor_instances(savename_coneresp_instances, coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances);
-                    
-                    SVMpercentCorrect = [];
-                    for rep = 1:nSVMrep
-                        SVMpercentCorrect = [SVMpercentCorrect, svm_pca(theMosaic, coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances)];
-                    end
-                    saveparfor_svm(savename_coneresp, SVMpercentCorrect);
-                    
-                end
 
+                    svm_compare_scenes(theOI, theMosiac, scene1, scene2, 1); % Last param: add_poisson_noise (Function should add noise)
+                end
             end
         end
     end
 end
-
-function [coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances] = coneExcitationAddNoise(coneExcitationsCond1, coneExcitationsCond2)
-
-% Compute some noisy instances of cone mosaic excitations
-nInstances = 1024;
-[nr1, nc1] = size(coneExcitationsCond1);
-[nr2, nc2] = size(coneExcitationsCond2);
-coneExcitationCond1_noisyInstances = nan(nInstances, nr1, nc1); 
-coneExcitationCond2_noisyInstances = nan(nInstances, nr2, nc2); 
-for i = 1:nInstances
-    coneExcitationCond1_noisyInstances(i,:,:) = poissrnd(coneExcitationsCond1);
-    coneExcitationCond2_noisyInstances(i,:,:) = poissrnd(coneExcitationsCond2);
-end
-
-end
-
-
-function saveparfor(savename_coneresp, coneExcitationsCond1, coneExcitationsCond2)
-
-fprintf('Saving %s. \n', savename_coneresp);
-save(savename_coneresp, 'coneExcitationsCond1', 'coneExcitationsCond2');
-
-end
-
-function saveparfor_instances(savename_coneresp_instances, coneExcitationCond1_noisyInstances, coneExcitationCond2_noisyInstances)
-
-save(savename_coneresp_instances, 'coneExcitationCond1_noisyInstances', 'coneExcitationCond2_noisyInstances', '-v7.3');
-
-end
-
-function saveparfor_rseed(savename_coneresp, randomSeed)
-
-save(savename_coneresp, 'randomSeed', '-append');
-
-end
-
-function saveparfor_svm(savename_coneresp, SVMpercentCorrect)
-
-fprintf('%s: %.2f \n', savename_coneresp, mean(SVMpercentCorrect));
-if ismember(who('-file', savename_coneresp), 'SVMpercentCorrect')
-    SVMpercentCorrect_prev = load(savename_coneresp, 'SVMpercentCorrect');
-    SVMpercentCorrect = [SVMpercentCorrect_prev, SVMpercentCorrect];
-end
-save(savename_coneresp, 'SVMpercentCorrect', '-append');
-
-end
-
-function [runsvm, nrunadd] = checkforsvm(savename_coneresp, nSVMrep)
-if ismember(who('-file', savename_coneresp), 'SVMpercentCorrect')
-    SVMpercentCorrect = load(savename_coneresp, 'SVMpercentCorrect'); 
-end 
-if length(SVMpercentCorrect) < nSVMrep
-    runsvm = true;
-    nrunadd = nSVM-length(SVMpercentCorrect);
-    if ~ismember(who('-file', savename_coneresp), 'randomSeed')
-        randomSeed = rng;
-        saveparfor_rseed(savename_coneresp, randomSeed);
-    end
-    fprintf('%d SVM run exists. Adding %d more runs... \n', length(SVMpercentCorrect), nrunadd);
-else
-    runsvm = false;
-    nrunadd = 0;
-    fprintf('%d SVM run exists - this simulation is complete. \n', length(SVMpercentCorrect)); 
-end 
-end 

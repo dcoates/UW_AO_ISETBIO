@@ -12,7 +12,7 @@ This repository contains demos, simulations, and work-in-progress to model AO ex
 
 Stable:
 - `make_optics.m:` Creates two optics objects, one with typical LCA (ISETBio default) and one with LCA defeated (custom). Seems harmless to construct both objects, even if only one is used in a given simulation.
-- `t_twoline_scene.m:` Tutorial showing how to create a two-line scene. Plots a typical R/G bar pair optical image, both with and without LCA.
+- `t_twoline_scene.m:` Tutorial showing how to create a two-line scene. Plots an R/G bar pair optical image, both with and without LCA.
 - `t_twoline_excitations.m:` Tutorial showing how to generate cone excitations from a two-line stimulus (without LCA), using built-in `visualizeConeResponses`
 
 Work-in-progress:
