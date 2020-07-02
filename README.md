@@ -14,6 +14,7 @@ Stable:
 - `make_optics.m:` Creates two optics objects, one with typical LCA (ISETBio default) and one with LCA defeated (custom). Seems harmless to construct both objects, even if only one is used in a given simulation.
 - `t_twoline_scene.m:` Tutorial showing how to create a two-line scene. Plots an R/G bar pair optical image, both with and without LCA.
 - `t_twoline_excitations.m:` Tutorial showing how to generate cone excitations from a two-line stimulus (without LCA), using built-in `visualizeConeResponses`
+- `t_svm_gratings.m:` Tutorial showing minimal example of running PCA-SVM to determine thresholds for a 2AFC task (here R/G vertical vs. horizontal discrimination). Shows performance at 3 contrasts spanning the psychometric function, and indicates time required for each step.`
 
 Work-in-progress:
 - `GaborSceneNoLCA_postNoise.m:` Extensive simulations of chromatic gratings at various spatial frequencies and conditions, which are fed into an SVM to determine simulated detection thresholds. Currently being cleaned-up.
