@@ -9,7 +9,7 @@ rng;
 presentationDisplay = displayCreate('AOSim-Seattle_SPDcorrected_Scaled');
 
 scene_sample = generateGaborSceneAO(presentationDisplay, 1, 1, 1, 1); % just to get the fov for mosaic generation
-sceneFov = 0.2;%sceneGet(scene_sample, 'fov');
+sceneFov = 1.1;%sceneGet(scene_sample, 'fov');
 % ok, if this value is smaller than that size of the scene, the mosaic
 % generation gets error. Here as a quick remedy artificially giving a
 % slightly higer fov.
@@ -33,6 +33,8 @@ nSVMrep = 1;
 if ~isfolder(resultdir)
     mkdir(resultdir);
 end
+
+parpool('local',2); % More parallel workers often leads to memory problems
 
 for mos = 1:length(KLMSdensity)
     
@@ -76,7 +78,7 @@ for mos = 1:length(KLMSdensity)
     end
     
     condIdPerColtype = [floor((0:nSF*nContrast-1)/nContrast)' + 1, mod(0:nSF*nContrast-1, nContrast)' + 1];
-    
+
     for oi = 1:2
         % For oi==1, do LCA off, everything OFF
         % For oi==2, do LCA on, normal human wvf
@@ -110,7 +112,7 @@ for mos = 1:length(KLMSdensity)
                     scene2 = generateGaborSceneAO(presentationDisplay, this_coltype(2), this_ort(2), this_sf, this_contrast);
                     %% Compute the mean cone excitation responses to the stimulus
 
-                    svm_compare_scenes(theOI, theMosiac, scene1, scene2, 1); % Last param: add_poisson_noise (Function should add noise)
+                    svm_compare_scenes(theOI, theMosaic, scene1, scene2, 1); % Last param: add_poisson_noise (Function should add noise)
                 end
             end
         end
